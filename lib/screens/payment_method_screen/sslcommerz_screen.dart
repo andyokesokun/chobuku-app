@@ -1,0 +1,175 @@
+import 'dart:convert';
+
+import 'package:active_ecommerce_flutter/custom/toast_component.dart';
+import 'package:active_ecommerce_flutter/helpers/shared_value_helper.dart';
+import 'package:active_ecommerce_flutter/my_theme.dart';
+import 'package:active_ecommerce_flutter/repositories/payment_repository.dart';
+import 'package:active_ecommerce_flutter/screens/order_list.dart';
+import 'package:active_ecommerce_flutter/screens/wallet.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:toast/toast.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+class SslCommerzScreen extends StatefulWidget {
+  final double amount;
+  final String payment_type;
+  final String payment_method_key;
+  final dynamic package_id;
+
+  SslCommerzScreen({
+    Key? key,
+    this.amount = 0.0,
+    this.payment_type = "",
+    this.package_id = "0",
+    this.payment_method_key = "",
+  }) : super(key: key);
+
+  @override
+  _SslCommerzScreenState createState() => _SslCommerzScreenState();
+}
+
+class _SslCommerzScreenState extends State<SslCommerzScreen> {
+  int _combined_order_id = 0;
+  bool _order_init = false;
+  String _initial_url = "";
+  bool _initial_url_fetched = false;
+
+  late final WebViewController _webViewController;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize WebViewController
+    _webViewController = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onPageFinished: (page) {
+            if (page.contains("/sslcommerz/success")) {
+              getData();
+            } else if (page.contains("/sslcommerz/cancel") ||
+                page.contains("/sslcommerz/fail")) {
+              ToastComponent.showDialog("Payment cancelled or failed",
+                  gravity: Toast.center, duration: Toast.lengthLong);
+              Navigator.of(context).pop();
+            }
+          },
+          onWebResourceError: (error) {
+            print("WebView error: $error");
+          },
+        ),
+      );
+
+    if (widget.payment_type == "cart_payment") {
+      createOrder();
+    } else {
+      getSetInitialUrl();
+    }
+  }
+
+  createOrder() async {
+    var orderCreateResponse =
+        await PaymentRepository().getOrderCreateResponse(widget.payment_method_key);
+
+    if (!orderCreateResponse.result) {
+      ToastComponent.showDialog(orderCreateResponse.message,
+          gravity: Toast.center, duration: Toast.lengthLong);
+      Navigator.of(context).pop();
+      return;
+    }
+
+    _combined_order_id = orderCreateResponse.combined_order_id;
+    _order_init = true;
+    setState(() {});
+
+    getSetInitialUrl();
+  }
+
+  getSetInitialUrl() async {
+    var sslcommerzUrlResponse =
+        await PaymentRepository().getSslcommerzBeginResponse(
+            widget.payment_type, _combined_order_id, widget.package_id, widget.amount);
+
+    if (!sslcommerzUrlResponse.result) {
+      ToastComponent.showDialog(sslcommerzUrlResponse.message,
+          gravity: Toast.center, duration: Toast.lengthLong);
+      Navigator.of(context).pop();
+      return;
+    }
+
+    _initial_url = sslcommerzUrlResponse.url;
+    _initial_url_fetched = true;
+    setState(() {});
+    _webViewController.loadRequest(Uri.parse(_initial_url));
+  }
+
+  void getData() {
+    _webViewController.runJavaScriptReturningResult("document.body.innerText").then((data) {
+      Map<String, dynamic> responseJSON = jsonDecode(data.toString());
+
+      if (responseJSON["result"] == false) {
+        Toast.show(responseJSON["message"],
+            duration: Toast.lengthLong, gravity: Toast.center);
+        Navigator.pop(context);
+      } else if (responseJSON["result"] == true) {
+        Toast.show(responseJSON["message"],
+            duration: Toast.lengthLong, gravity: Toast.center);
+        if (widget.payment_type == "cart_payment") {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => OrderList(from_checkout: true)));
+        } else if (widget.payment_type == "wallet_payment") {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (context) => Wallet(from_recharge: true)));
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: app_language_rtl.$ ? TextDirection.rtl : TextDirection.ltr,
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: buildAppBar(context),
+        body: buildBody(),
+      ),
+    );
+  }
+
+  Widget buildBody() {
+    if (!_order_init && _combined_order_id == 0 && widget.payment_type == "cart_payment") {
+      return Center(
+        child: Text(AppLocalizations.of(context)!.common_creating_order),
+      );
+    } else if (!_initial_url_fetched) {
+      return Center(
+        child: Text(AppLocalizations.of(context)!.sslcommerz_screen_fetching_sslcommerz_url),
+      );
+    } else {
+      return SizedBox.expand(
+        child: WebViewWidget(controller: _webViewController),
+      );
+    }
+  }
+
+  AppBar buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      centerTitle: true,
+      leading: IconButton(
+        icon: Icon(CupertinoIcons.arrow_left, color: MyTheme.dark_grey),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: Text(
+        AppLocalizations.of(context)!.sslcommerz_screen_pay_with_sslcommerz,
+        style: TextStyle(fontSize: 16, color: MyTheme.accent_color),
+      ),
+      elevation: 0.0,
+      titleSpacing: 0,
+    );
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "248985700271",
+    "project_id": "chopboku-a9df7",
+    "storage_bucket": "chopboku-a9df7.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:248985700271:android:c366dfcd6dbfcfc5ce115a",
+        "android_client_info": {
+          "package_name": "app.chopboku.com"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "248985700271-jk40ojhvqu8e9fp9nvf0p6gh38q1pnd8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC8f-8ha6FEN6TtA5j9A9VZR8rR5UlPkII"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "248985700271-jk40ojhvqu8e9fp9nvf0p6gh38q1pnd8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,103 @@
+
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    // Must come after Android and Kotlin
+    id "dev.flutter.flutter-gradle-plugin"
+    id "com.google.gms.google-services"
+    
+}
+
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader("UTF-8") { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
+def flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
+
+// Keystore for release signing
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+// Force all Java compile tasks to use Java 17
+tasks.withType(JavaCompile).configureEach {
+    it.sourceCompatibility = JavaVersion.VERSION_17.toString()
+    it.targetCompatibility = JavaVersion.VERSION_17.toString()
+}
+
+
+android {
+    namespace "app.chopboku.com"
+    compileSdk = 35
+
+    ndkVersion = "26.1.10909125"
+
+    defaultConfig {
+        applicationId "app.chopboku.com"
+        minSdk = 23
+        targetSdk = 35
+        versionCode = flutterVersionCode.toInteger()
+        versionName = flutterVersionName
+        multiDexEnabled true
+    }
+
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties["keyAlias"]
+            keyPassword keystoreProperties["keyPassword"]
+            storeFile keystoreProperties["storeFile"] ? file(keystoreProperties["storeFile"]) : null
+            storePassword keystoreProperties["storePassword"]
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            // Optional: shrink + optimize if ready
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+        freeCompilerArgs += ["-Xskip-metadata-version-check"]
+    }
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
+
+    // Multidex (important for Firebase)
+    implementation "androidx.multidex:multidex:2.0.1"
+
+    implementation platform("com.google.firebase:firebase-bom:33.3.0") // or latest stable
+
+    implementation "com.google.firebase:firebase-analytics"
+    implementation "com.google.firebase:firebase-auth"
+    implementation "com.google.firebase:firebase-firestore"
+    implementation "com.google.firebase:firebase-messaging"
+}
